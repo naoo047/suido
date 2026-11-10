@@ -30,7 +30,18 @@ COST_LABELS = {
     "c_interest": "支払利息（借入金の利息）",
     "c_power": "動力費（ポンプなどの電気代）",
 }
-RATE_SYSTEM = {"1": "用途別（家庭用・業務用などで料金が違う）", "2": "口径別（水道メーターの大きさで料金が違う）", "3": "その他"}
+PREFS = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県",
+         "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県",
+         "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県",
+         "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"]
+
+
+def pref_slug(pref: str) -> str:
+    """都道府県のページの置き場所: pref/28/（全国地方公共団体コードの上 2 桁）"""
+    return f"pref/{PREFS.index(pref) + 1:02d}"
+
+
+RATE_SYSTEM = {"1":"用途別（家庭用・業務用などで料金が違う）", "2": "口径別（水道メーターの大きさで料金が違う）", "3": "その他"}
 
 
 def _norm_name(s: str) -> str:
@@ -211,7 +222,8 @@ def render_utility(a: dict, pref_list: list[dict], released: set[str]) -> str:
 </table></div>
 <p class="note">{renew}料金回収率が100%を下回ると、料金収入だけでは給水の費用をまかなえていないことを表します。ただし総務省は、限られた指標だけで経営のよしあしをすぐに判断するものではないとしています。</p></section>
 <details class="all"><summary><span class="sum-title">{e(a['pref'])}の水道料金（10㎥・高い順）</span><span class="sum-hint">{a['pref_n']}事業者をまとめて見る</span></summary>
-<div class="all-body"><div class="table-wrap"><table><thead><tr><th>順位</th><th>事業者</th><th>10㎥あたり</th></tr></thead><tbody>{pref_rows}</tbody></table></div></div></details>
+<div class="all-body"><div class="table-wrap"><table><thead><tr><th>順位</th><th>事業者</th><th>10㎥あたり</th></tr></thead><tbody>{pref_rows}</tbody></table></div>
+<p><a href="../{pref_slug(a['pref'])}/">{e(a['pref'])}の水道料金の一覧（費用や料金回収率も）</a></p></div></details>
 <section><h2>数字の根拠</h2><div class="note">
 <p>数字はすべて、{e(SOURCE[0])}の令和6年度決算の事業者ごとの値です。順位と中央値は、家庭に直接給水する上水道事業（全国{a['n']:,}）で計算しました。簡易水道事業は含みません。</p>
 <p>料金回収率は「供給単価 ÷ 給水原価 × 100」、水道管の割合は「法定耐用年数を経過した管路延長（または当年度に更新した管路延長）÷ 導送配水管延長 × 100」で計算しました。</p>
@@ -222,7 +234,7 @@ def render_utility(a: dict, pref_list: list[dict], released: set[str]) -> str:
     return _page(f"{title} | {SITE_NAME}", body, desc, BASE_URL + a["slug"] + "/", 1)
 
 
-def render_index(all_a: dict, released: set[str]) -> str:
+def render_index(all_a: dict, released: set[str], prefs: list[str] = ()) -> str:
     e = html.escape
     items = sorted(all_a.values(), key=lambda a: a["rank"])
 
@@ -235,14 +247,66 @@ def render_index(all_a: dict, released: set[str]) -> str:
     rel = sorted((all_a[s] for s in released if s in all_a), key=lambda a: a["rank"])
     links = "".join(f"<li><a href=\"{a['slug']}/\"><b>{e(a['name'])}</b><span>{_yen(a['rate10'])}・全国{a['rank']}位</span></a></li>" for a in rel)
     med = items[0]["median"]["rate10"]
+    pref_links = ("<section><h2>都道府県ごとの一覧</h2><ul class=\"prefs\">"
+                  + "".join(f"<li><a href=\"{pref_slug(x)}/\">{e(x)}</a></li>" for x in prefs) + "</ul></section>") if prefs else ""
     body = f"""<main class="wrap"><h1>{SITE_NAME}</h1>
 <p class="lead">市町村の水道料金を、全国{len(items):,}の水道事業と比べて「高いのか」「なぜなのか」を国の統計の数字で示します。家庭用の1か月10㎥あたりの全国の中央値は{_yen(med)}です。</p>
 <section><h2>事業者ごとのページ</h2><ul class="index">{links}</ul></section>
+{pref_links}
 <section><h2>水道料金が高い事業者（10㎥・上位30）</h2><div class="table-wrap"><table>{head}<tbody>{top}</tbody></table></div></section>
 <section><h2>水道料金が安い事業者（10㎥・下位30）</h2><div class="table-wrap"><table>{head}<tbody>{low}</tbody></table></div></section>
 <section><h2>数字の根拠</h2><p class="note">{e(SOURCE[0])}の令和6年度決算の事業者ごとの値です。家庭に直接給水する上水道事業（簡易水道事業を除く）で比べています。料金はその後に改定されている場合があります。</p></section></main>"""
     return _page(f"{SITE_NAME} — 市町村の水道料金は高い？全国の比較と理由", body,
                  "市町村の水道料金を全国の水道事業と比べ、高い理由を費用や水道管の古さなど国の統計で示します。", BASE_URL, 0)
+
+
+def pref_summary(pref: str, items: list[dict]) -> list[str]:
+    """都道府県の一覧ページの冒頭に置く、数字の比較だけの文。items は 10㎥ 料金の高い順。"""
+    m = items[0]["median"]
+    pm = _median(x["rate10"] for x in items)
+    hi, lo = items[0], items[-1]
+    out = [f"{pref}で家庭に直接給水している上水道は{len(items)}事業者です。1か月10㎥あたりの料金の中央値は{_yen(pm)}で、"
+           f"全国の中央値（{_yen(m['rate10'])}）より{'高め' if pm > m['rate10'] * 1.05 else '安め' if pm < m['rate10'] * 0.95 else 'わずかな差'}です。"]
+    if len(items) > 1:
+        out.append(f"いちばん高いのは{hi['name']}（{_yen(hi['rate10'])}）、いちばん安いのは{lo['name']}（{_yen(lo['rate10'])}）で、"
+                   f"{hi['rate10'] / lo['rate10']:.1f}倍の差があります。")
+    under = [x for x in items if x["recovery_pct"] is not None and x["recovery_pct"] < 100]
+    if under:
+        out.append(f"料金回収率が100%を下回る（料金収入だけでは給水の費用をまかなえていない）事業者は、{len(items)}事業者のうち{len(under)}です。")
+    return out
+
+
+def render_pref(pref: str, items: list[dict], released: set[str]) -> str:
+    """都道府県の一覧ページ（10㎥料金の高い順）。items は 10㎥ 料金の高い順。"""
+    e = html.escape
+    m = items[0]["median"]
+    rows = "".join(
+        f"<tr><td>{i + 1}</td><th>"
+        + (f"<a href=\"../../{x['slug']}/\">{e(x['name'])}</a>" if x["slug"] in released else e(x["name"]))
+        + f"</th><td>{_yen(x['rate10'])}</td><td>{x['rank']:,}位</td><td>{_num(x['cost_unit'], '.0f')}円</td>"
+        f"<td>{_num(x['recovery_pct'], '.0f')}%</td><td>{_num(x['aged_pct'], '.0f')}%</td></tr>"
+        for i, x in enumerate(items))
+    pages = [x for x in items if x["slug"] in released]
+    links = ("<section><h2>くわしいページ</h2><ul class=\"index\">"
+             + "".join(f"<li><a href=\"../../{x['slug']}/\"><b>{e(x['name'])}</b><span>{_yen(x['rate10'])}・全国{x['rank']:,}位</span></a></li>" for x in pages)
+             + "</ul></section>") if pages else ""
+    title = f"{pref}の水道料金ランキング｜市町村ごとの比較"
+    body = f"""<main class="wrap">
+<p class="eyebrow"><a href="../../">全国</a> › {e(pref)}</p>
+<h1>{e(title)}</h1>
+<section class="answer">{''.join(f'<p>{e(s)}</p>' for s in pref_summary(pref, items))}</section>
+{links}
+<section><h2>{e(pref)}の水道料金（10㎥・高い順）</h2>
+<div class="table-wrap scroll"><table class="pref"><thead><tr><th>順位</th><th>事業者</th><th>10㎥あたり</th><th>全国順位</th><th>給水原価</th><th>料金回収率</th><th>古い水道管</th></tr></thead>
+<tbody>{rows}</tbody></table></div>
+<p class="note">料金は家庭用（口径13mm）の1か月10㎥あたり（税込み）。全国順位は全国{items[0]['n']:,}の水道事業の中の高い順です。給水原価は水1㎥を届けるのにかかる費用（全国の中央値は{m['cost_unit']:.0f}円）、料金回収率は供給単価 ÷ 給水原価、古い水道管は法定耐用年数を過ぎた水道管の割合（全国の中央値は{m['aged_pct']:.0f}%）です。</p></section>
+<section><h2>数字の根拠</h2><div class="note">
+<p>数字はすべて、{e(SOURCE[0])}の令和6年度決算の事業者ごとの値です。家庭に直接給水する上水道事業だけを並べ、簡易水道事業や、水道事業者に水を売る用水供給事業は含みません。</p>
+<p>同じ市町村の中でも、地域によって別の事業者（都道府県営や企業団）の水道が給水していることがあります。料金はその後に改定されている場合があるので、最新の料金は水道局のページで確かめてください。</p></div>
+<ul class="sources"><li>出典：{e(SOURCE[0])}を加工して作成 <a href="{SOURCE[1]}" target="_blank" rel="noopener">{SOURCE[1]}</a></li></ul></section>
+</main>"""
+    desc = f"{pref}の{len(items)}の水道事業の料金（10㎥あたり）を高い順に比較。給水原価・料金回収率・古い水道管の割合も国の統計で。"
+    return _page(f"{title} | {SITE_NAME}", body, desc, BASE_URL + pref_slug(pref) + "/", 2)
 
 
 ABOUT = ("<main class=\"wrap\"><h1>運営者情報</h1><p>水道料金のしくみは、市町村の水道料金が高いのか、なぜなのかを、"
@@ -257,6 +321,8 @@ EXTRA_CSS = """
 table.cmp{border-collapse:collapse;width:100%;min-width:420px;font-size:15px}
 table.cmp th{font-weight:500;color:var(--muted);text-align:left}
 table.cmp td{font-weight:700;white-space:nowrap}
+table.pref th,table.pref td{white-space:nowrap}
+ul.prefs{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:8px}ul.prefs a{display:block;padding:6px 12px;border:1px solid var(--line);border-radius:6px;text-decoration:none}
 table.cmp td.med,table.cmp thead td{color:var(--muted);font-size:13px;font-weight:500}
 """
 
@@ -284,7 +350,15 @@ def build_site(out: Path = SITE_OUT, data: Path = DATA, utilities: Path = UTILIT
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(render_utility(a, pref_list, released), encoding="utf-8")
         written.append(p)
-    pages = {"index.html": render_index(all_a, released),
+    # 都道府県の一覧ページは、事業者のページを 1 つ以上公開した都道府県だけ（公開と一緒に少しずつ増える）
+    prefs = sorted({all_a[s]["pref"] for s in released}, key=PREFS.index)
+    for pref in prefs:
+        items = sorted([x for x in all_a.values() if x["pref"] == pref], key=lambda x: -x["rate10"])
+        p = out / pref_slug(pref) / "index.html"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(render_pref(pref, items, released), encoding="utf-8")
+        written.append(p)
+    pages = {"index.html": render_index(all_a, released, prefs),
              "about/index.html": _page(f"運営者情報 | {SITE_NAME}", ABOUT, "運営者情報", BASE_URL + "about/", 1),
              "privacy/index.html": _page(f"プライバシーポリシー | {SITE_NAME}", PRIVACY, "プライバシーポリシー", BASE_URL + "privacy/", 1),
              "404.html": _page(f"ページが見つかりません | {SITE_NAME}",
@@ -295,7 +369,7 @@ def build_site(out: Path = SITE_OUT, data: Path = DATA, utilities: Path = UTILIT
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text, encoding="utf-8")
         written.append(p)
-    urls = [BASE_URL] + [BASE_URL + s + "/" for s in sorted(released)] + [BASE_URL + "about/", BASE_URL + "privacy/"]
+    urls = [BASE_URL] + [BASE_URL + pref_slug(x) + "/" for x in prefs] + [BASE_URL + s + "/" for s in sorted(released)] + [BASE_URL + "about/", BASE_URL + "privacy/"]
     (out / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
                                      + "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls) + "</urlset>\n", encoding="utf-8")
     (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {BASE_URL}sitemap.xml\n", encoding="utf-8")
