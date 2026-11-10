@@ -65,11 +65,3 @@ ul.list { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; max-width: 44
 ul.index { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 ul.index a { display: grid; gap: 4px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); text-decoration: none; color: var(--fg); }
 ul.index span { color: var(--muted); font-size: 14px; }
-
-.big{font-size:20px}.big b{font-size:30px;color:var(--peak)}.big small{color:var(--muted);font-size:13px;margin-left:6px}
-.answer p{margin:0}
-.scroll{overflow-x:auto}
-table.cmp{border-collapse:collapse;width:100%;min-width:420px;font-size:15px}
-table.cmp th{font-weight:500;color:var(--muted);text-align:left}
-table.cmp td{font-weight:700;white-space:nowrap}
-table.cmp td.med,table.cmp thead td{color:var(--muted);font-size:13px;font-weight:500}
